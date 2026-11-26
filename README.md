@@ -1,36 +1,67 @@
-# devvit-app-template
+# Predatory Journal Watch
 
-Standard template for standalone [Reddit Devvit](https://developers.reddit.com/docs) Web apps under `AllHailSeizure`.
+A [Reddit Devvit](https://developers.reddit.com/docs) Web app. It watches new posts and comments for links and DOIs that belong to publishers on public predatory or hijacked journal watchlists (the Retraction Watch Hijacked Journal Checker and Beall's List), and posts a short, locked, distinguished warning. **It never removes or reports anything.**
 
-## Included Stack
+- **Devvit app:** `predatory-journal-watch` · **Baseline version:** `1.0.0` (new app, never published)
+- **Legal:** [Terms](https://allhailseizure.github.io/predatory-journal-watch/terms/) · [Privacy](https://allhailseizure.github.io/predatory-journal-watch/privacy/)
+- Extracted from the `predatory-journal-watch` module of `moderator-toolbox` in [`AllHailSeizure/Reddit-Devvit`](https://github.com/AllHailSeizure/Reddit-Devvit) at source commit `649cd2a9e8fece8b3253d373f34ff911e42f931e`. The history of the module's files is preserved with `git filter-repo`. Cutover steps are in `CUTOVER.md` in [`moderator-toolbox`](https://github.com/AllHailSeizure/moderator-toolbox).
 
-- **Runtime & SDK:** Node `24` (`.node-version`), `@devvit/web`, `@devvit/start`, `@devvit/shared-types`, and `devvit` CLI pinned consistently (`0.15.6`).
-- **Server:** Hono (`src/server/app.ts` separated from `src/server/index.ts` so routes can be tested in-process).
-- **Quality gates:** `npm run check` runs `eslint`, `tsc --noEmit` (`strict: true`), `vitest`, and `vite build` (`dist/server/index.cjs`).
-- **No-login testing:** `@devvit/test` (`createDevvitTest()`) extended by `FakeRedditWorld` + `ScenarioRunner` (`src/server/test-harness/`) for testing Hono triggers/menus and mocking Moderation/Listing/Flair APIs without logging in to Reddit.
-- **Helpers:** Lightweight `logger()` (`src/server/helpers/logger.ts`) and `formatSignature()` (`src/server/helpers/signature.ts`).
-- **CI/CD & Legal Docs:** GitHub Actions CI (`ci.yml`), manual lockstep release (`release.yml`), and per-repo GitHub Pages legal site (`docs/` + `pages.yml`).
+## How it works
 
----
-
-## Creating a New App From This Template
-
-1. On GitHub, click **Use this template → Create a new repository** under `AllHailSeizure` (public, default branch `master`).
-2. Clone the new repository and customize these files:
-   - `package.json` — set `"name"` to your app slug and `"version"` to your starting 3-part SemVer (e.g. `"0.1.0"` or matching your existing Devvit App Store version).
-   - `devvit.json` — set `"name"` to your unique Devvit app slug, update `dev.subreddit`, `permissions`, `triggers`, `menu`, and `settings`.
-   - `assets/icon.png` — replace the placeholder icon.
-   - `docs/_config.yml` — update `title` and `baseurl` (`"/<your-repo-name>"`).
-   - `docs/privacy.md` & `docs/terms.md` — replace `<APP_NAME>` and tailor data/terms sections.
-3. Install dependencies and verify locally:
-
-```sh
-npm install
-npm run check
+```
+onPostSubmit / onCommentCreate (comments optional)
+  │  skip: disabled · already handled · deleted/app author · no URLs or DOIs
+  ▼
+POST {supabaseUrl}/functions/v1/resolve-doi   { hosts, dois, allowlist, matchPublisherName }
+  │  bearer = supabaseFunctionToken (falls back to supabaseServiceKey)
+  │  edge function resolves DOIs through doi.org → Crossref / DataCite (14-day cache in doi_resolution)
+  │  and matches hosts against predatory_watchlist (refreshed daily by sync-predatory-watchlist)
+  ▼
+hits → one reply listing every publisher not yet warned on this post
+       (post: distinguished + stickied + locked; comment: distinguished + locked)
 ```
 
-4. Enable **GitHub Pages** in repository **Settings → Pages → Source: GitHub Actions** so `docs/` publishes to `https://allhailseizure.github.io/<repo>/`.
-5. Configure the `DEVVIT_AUTH_TOKEN` secret (see below).
+Supabase misconfiguration, an empty watchlist, or a resolve-doi error leaves the item unhandled, so a redelivered trigger can retry it.
+
+## Layout
+
+| Path | Purpose |
+| --- | --- |
+| `src/server/predatory-journal-watch.ts` | Trigger handlers, Redis claims, and the reply |
+| `src/server/predatory-journal-decision.ts` | Pure matching rules. The Devvit app and the `resolve-doi` edge function share this file |
+| `src/server/*.test.ts` | Decision, watchlist-parser, and resolve-doi unit tests, plus FakeRedditWorld trigger tests (spied `fetch`, no network) |
+| `supabase/functions/resolve-doi/` | Edge function: DOI resolution and watchlist matching |
+| `supabase/functions/sync-predatory-watchlist/` | Edge function: daily watchlist refresh. `CRON.sql` holds the pg_cron schedule, which is not a migration |
+| `supabase/migrations/014`–`016` | `predatory_watchlist`, `doi_resolution`, `function_tokens`. The original numbering is kept to match the shared Supabase project |
+
+### Redis keys (unchanged from moderator-toolbox)
+
+| Key | TTL |
+| --- | --- |
+| `bot:pjmod:handled:{contentId}` | 7 days |
+| `bot:pjmod:pub:{postId}:{publisherKey}` | 180 days |
+| `bot:pjmod:log` | capped at 200 entries |
+
+### Settings
+
+- **Global:**
+  - `supabaseUrl`
+  - `supabaseFunctionToken` (secret): its SHA-256 goes in `public.function_tokens`
+  - `supabaseServiceKey` (secret): used for bot logs, and as the fallback bearer
+- **Subreddit:**
+  - `predatoryWatchEnabled`, `predatoryWatchCheckComments`, `predatoryWatchWarning`, `predatoryWatchAllowlist`, `predatoryWatchMatchPublisherName`, `botSignature`
+
+### Supabase deployment (manual)
+
+The release workflow publishes only the Devvit app. Deploy Supabase changes by hand:
+
+```sh
+npx supabase functions deploy resolve-doi
+npx supabase functions deploy sync-predatory-watchlist
+# CROSSREF_MAILTO is an optional Supabase secret for Crossref's polite pool
+```
+
+The app account comments, so **add `predatory-journal-watch` to `STATIC_BOT_AUTHORS` in moderator-toolbox's report-moderator**. Already done in the slimmed toolbox.
 
 ---
 
@@ -52,7 +83,7 @@ npm run dev         # npx devvit playtest (requires Devvit login)
 - **`FakeRedditWorld`:** stateful in-memory posts/comments and `vi.spyOn` handlers for `reddit.submitComment` and `reddit.remove`, plus a `.use(extension)` hook for adding module-specific spies (`getComments`, `getPostsByUser`, `getModerators`, `setUserFlair`, etc.).
 - **`ScenarioRunner`:** calls `createApp().fetch(...)` directly against `/internal/triggers/*`, `/internal/menu/*`, and `/internal/forms/*`.
 
-See `src/server/app.test.ts` for a working example.
+See `src/server/predatory-journal-watch.test.ts` for working examples.
 
 > `createModTest()` wraps plain `test(...)` calls only. For parameterised cases, loop over the cases and call `test(...)` for each one: `test.each` / `test.for` bypass the wrapper, so their tests get no `world` or `runner`.
 

@@ -86,3 +86,18 @@ export function logger(module: string) {
     },
   };
 }
+
+/** Append a JSON entry to a capped Redis sorted set (newest kept). Never throws. */
+export async function logZSet(
+  key: string,
+  entry: object,
+  maxEntries = MAX_LOG_ENTRIES
+): Promise<void> {
+  try {
+    const ts = Date.now();
+    await redis.zAdd(key, { score: ts, member: JSON.stringify({ ts, ...entry }) });
+    await redis.zRemRangeByRank(key, 0, -(maxEntries + 1));
+  } catch {
+    // Never let Redis logging break bot execution.
+  }
+}

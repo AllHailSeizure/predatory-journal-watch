@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "devvit-app-template",
+  "name": "predatory-journal-watch",
   "marketingAssets": {
     "icon": "assets/icon.png"
   },
@@ -11,39 +11,78 @@
     "subreddit": "llmphysics_dev"
   },
   "permissions": {
+    "http": {
+      "domains": [
+        "eimdgqymjwfljtapnuyl.supabase.co"
+      ]
+    },
     "redis": true,
     "reddit": {
-      "enable": true
+      "enable": true,
+      "scope": "moderator"
     }
   },
   "triggers": {
-    "onPostSubmit": "/internal/triggers/post-submit"
-  },
-  "menu": {
-    "items": [
-      {
-        "label": "Example Action",
-        "description": "Example moderator menu action.",
-        "forUserType": "moderator",
-        "location": "post",
-        "endpoint": "/internal/menu/example-action"
-      }
-    ]
+    "onPostSubmit": "/internal/triggers/post-submit",
+    "onCommentCreate": "/internal/triggers/comment-create"
   },
   "settings": {
-    "global": {},
-    "subreddit": {
-      "enabled": {
-        "type": "boolean",
-        "label": "Enable app",
-        "helpText": "Enable or disable automated actions.",
-        "defaultValue": true
+    "global": {
+      "supabaseUrl": {
+        "type": "string",
+        "label": "Supabase project URL",
+        "helpText": "https://YOUR_PROJECT.supabase.co. Used to call the resolve-doi edge function and to write bot logs to the bot_logs table.",
+        "isSecret": false
       },
+      "supabaseServiceKey": {
+        "type": "string",
+        "label": "Supabase service key",
+        "helpText": "Service key for writing bot logs to the bot_logs table, and the fallback bearer for resolve-doi when the function token is blank. Keep secret.",
+        "isSecret": true
+      },
+      "supabaseFunctionToken": {
+        "type": "string",
+        "label": "Supabase function token",
+        "helpText": "Bearer token for the resolve-doi edge function (its SHA-256 is stored in function_tokens). Falls back to the service key when blank. Keep secret.",
+        "isSecret": true
+      }
+    },
+    "subreddit": {
       "botSignature": {
         "type": "paragraph",
-        "label": "Bot signature",
-        "helpText": "Appended to bot comments. Leave blank for no signature.",
-        "defaultValue": ""
+        "label": "General — Bot signature",
+        "helpText": "Appended to all bot comments. Leave blank for no signature.",
+        "defaultValue": "I am a bot. This action was performed automatically. Contact the moderators if you have questions."
+      },
+      "predatoryWatchEnabled": {
+        "type": "boolean",
+        "label": "Enable",
+        "helpText": "Warn when a post or comment links a domain on the predatory/hijacked journal watchlist. Nothing is removed or reported.",
+        "defaultValue": true
+      },
+      "predatoryWatchCheckComments": {
+        "type": "boolean",
+        "label": "Check comments",
+        "helpText": "Also check new comments. A publisher already warned on that post is not warned again.",
+        "defaultValue": true
+      },
+      "predatoryWatchWarning": {
+        "type": "paragraph",
+        "label": "Warning comment",
+        "helpText": "Posted when a watchlisted publisher is linked. Placeholders: {publisher}, {source_list} (or {source list}), {source_url}. Leave blank to post nothing. The bot signature is appended.",
+        "defaultValue": "Note that {publisher} appears on [{source_list}]({source_url}) as a possible [predatory journal](https://en.wikipedia.org/wiki/Predatory_publishing)."
+      },
+      "predatoryWatchAllowlist": {
+        "type": "paragraph",
+        "label": "Allowlist",
+        "helpText": "Domains or publisher names that never produce a warning, separated by commas or new lines. Default includes MDPI and Frontiers. Clear the field to stop exempting anyone.",
+        "defaultValue": "mdpi.com\nfrontiersin.org\nMDPI\nFrontiers"
+      },
+      "predatoryWatchMatchPublisherName": {
+        "type": "boolean",
+        "label": "Match publisher names",
+        "helpText": "Weak secondary check: compare a DOI's publisher name to watchlist names when the landing domain did not match. Off by default. ISSN is never used.",
+        "defaultValue": false
       }
     }
   },
