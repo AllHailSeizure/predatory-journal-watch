@@ -366,12 +366,11 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
-# Auth is checked inside the function (bearer must be a server key or a token in
-# public.function_tokens). verify_jwt stays false so a non-JWT token works.
+# Authorization is enforced inside the function. verify_jwt stays false.
 [functions.resolve-doi]
 verify_jwt = false
 
-# Same auth as resolve-doi: the function checks the bearer itself.
+# Same in-function authorization model as resolve-doi.
 [functions.sync-predatory-watchlist]
 verify_jwt = false
 

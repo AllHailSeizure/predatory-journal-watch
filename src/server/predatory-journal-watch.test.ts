@@ -176,7 +176,7 @@ describe('predatory-journal-watch: posts', () => {
     expect(calls()).toHaveLength(1);
   });
 
-  test('falls back to the service key bearer when no function token is set', async ({
+  test('uses the secondary Authorization value when the primary setting is empty', async ({
     runner,
     http,
     configure,
