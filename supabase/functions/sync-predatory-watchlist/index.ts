@@ -1,20 +1,15 @@
 /**
  * sync-predatory-watchlist — Supabase Edge Function
  *
- * POST (or GET) with Authorization: Bearer <function token or server key>.
- * Refreshes predatory_watchlist from the pluggable sources in sources.mjs.
+ * POST (or GET). Refreshes predatory_watchlist from the pluggable sources in sources.mjs.
  * Rows missing from a successful sync are marked active = false.
  * A source that returns fewer than its minRows, or a failed page inside a
  * group, does not deactivate that group's existing rows.
  *
- * Auth matches resolve-doi: verify_jwt is false, and the bearer must either
- * equal a server key (SUPABASE_SERVICE_ROLE_KEY or one of SUPABASE_SECRET_KEYS),
- * or hash (SHA-256 hex) to a row in public.function_tokens (migration 016).
- * REST calls use the first available server key; new sb_secret_ keys go on
- * the apikey header only.
+ * Caller authorization matches resolve-doi (enforced inside the function).
  *
  * Schedule: supabase/functions/sync-predatory-watchlist/CRON.sql
- * (not applied by migrations — it needs a bearer stored in Vault).
+ * (not applied by migrations — configure Vault before scheduling).
  */
 import { SOURCE_GROUPS, assertAllowedSource, parseSourcePage } from './sources.mjs';
 import { mergeRows } from './parse.mjs';
@@ -34,10 +29,7 @@ async function sha256Hex(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * True when the bearer equals a server key, or its SHA-256 hex matches
- * one of the stored function_tokens hashes. Hashes load only when needed.
- */
+/** Returns whether the caller is authorized (hash table consulted when needed). */
 async function bearerAuthorized(
   token: string,
   serverKeys: string[],
@@ -81,17 +73,13 @@ function json(body: unknown, status = 200): Response {
 }
 
 function serviceHeaders(serviceKey: string): Record<string, string> {
-  // New sb_secret_ keys go on apikey only; a non-JWT bearer is rejected by REST.
+  // REST header shape depends on which Supabase key format is in use.
   const headers: Record<string, string> = { apikey: serviceKey, Accept: 'application/json' };
   if (serviceKey.startsWith('eyJ')) headers.Authorization = `Bearer ${serviceKey}`;
   return headers;
 }
 
-/**
- * Server keys injected into the function. The legacy service role key can be
- * empty once a project moves to the new API keys, so SUPABASE_SECRET_KEYS
- * (a JSON map of name -> sb_secret_ key) is read too. The first is used for REST.
- */
+/** Returns configuration used for Supabase REST calls in this function's environment. */
 function serverKeys(): string[] {
   const keys: string[] = [];
   const legacy = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '').trim();
@@ -104,12 +92,12 @@ function serverKeys(): string[] {
       if (typeof value === 'string' && value.trim()) keys.push(value.trim());
     }
   } catch {
-    // Malformed SUPABASE_SECRET_KEYS: fall back to whatever legacy key exists.
+    // If the env JSON is malformed, keep whatever legacy env value was already loaded.
   }
   return keys;
 }
 
-/** Accepts a server key (service role or secret), or a token whose SHA-256 is in function_tokens. */
+/** Returns whether the caller may invoke sync-predatory-watchlist. */
 async function isAuthorized(token: string, keys: string[], supabaseUrl: string): Promise<boolean> {
   const serviceKey = keys[0] ?? '';
   return bearerAuthorized(token, keys, async () => {

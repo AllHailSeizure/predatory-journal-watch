@@ -198,10 +198,7 @@ export async function sha256Hex(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * True when the bearer equals a server key, or its SHA-256 hex matches
- * one of the stored function_tokens hashes. Hashes load only when needed.
- */
+/** Returns whether the caller is authorized (hash table consulted when needed). */
 export async function bearerAuthorized(
   token: string,
   serverKeys: string[],

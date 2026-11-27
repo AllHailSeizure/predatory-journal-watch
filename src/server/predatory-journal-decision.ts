@@ -441,8 +441,8 @@ export function registrationAgency(payload: unknown): 'crossref' | 'datacite' | 
 }
 
 /**
- * Bearer for resolve-doi: the dedicated function token when set, otherwise the
- * service key. Returns '' when neither is configured.
+ * Authorization value for resolve-doi requests from Devvit global settings.
+ * Returns '' when nothing is configured.
  */
 export function resolveBearer(
   functionToken: string | null | undefined,
@@ -451,10 +451,7 @@ export function resolveBearer(
   return (functionToken ?? '').trim() || (serviceKey ?? '').trim();
 }
 
-/**
- * Headers for resolve-doi. The functions gateway does not need an apikey header
- * when verify_jwt is false, so only the bearer is sent.
- */
+/** JSON POST headers for the resolve-doi edge function. */
 export function resolveDoiHeaders(bearer: string): Record<string, string> {
   return {
     'Content-Type': 'application/json',

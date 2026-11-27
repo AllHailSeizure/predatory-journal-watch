@@ -201,7 +201,7 @@ describe('settings helpers', () => {
   });
 });
 
-describe('resolve-doi credentials', () => {
+describe('resolve-doi authorization', () => {
   it('prefers the function token and falls back to the service key', () => {
     expect(resolveBearer('tok', 'svc')).toBe('tok');
     expect(resolveBearer('  ', 'svc')).toBe('svc');

@@ -2,18 +2,13 @@
  * resolve-doi — Supabase Edge Function
  *
  * POST { hosts, dois, allowlist, matchPublisherName }
- * Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
  *
  * Resolves DOIs through doi.org, Crossref, and DataCite, caches each result
  * in doi_resolution, and returns watchlist hits. The Devvit app never calls
- * those hosts itself. Crossref mailto comes from the CROSSREF_MAILTO secret
- * (blank still works, with a generic user agent).
+ * those hosts itself. Optional Crossref polite-pool contact mail comes from
+ * operator configuration (blank still works, with a generic user agent).
  *
- * verify_jwt is false, matching process-review, so a non-JWT bearer works.
- * The bearer must either equal a server key (SUPABASE_SERVICE_ROLE_KEY or one of
- * SUPABASE_SECRET_KEYS), or hash (SHA-256 hex)
- * to a row in public.function_tokens (migration 016). Devvit sends its
- * supabaseFunctionToken setting, falling back to supabaseServiceKey.
+ * Caller authorization is enforced inside this function (see migration 016).
  */
 import { bearerAuthorized, resolveHits, type DoiCacheRow, type ResolveBody } from './resolve.ts';
 import type { WatchEntry } from '../../../src/server/predatory-journal-decision.ts';
@@ -26,17 +21,13 @@ function json(body: unknown, status = 200): Response {
 }
 
 function serviceHeaders(serviceKey: string): Record<string, string> {
-  // New sb_secret_ keys go on apikey only; a non-JWT bearer is rejected by REST.
+  // REST header shape depends on which Supabase key format is in use.
   const headers: Record<string, string> = { apikey: serviceKey, Accept: 'application/json' };
   if (serviceKey.startsWith('eyJ')) headers.Authorization = `Bearer ${serviceKey}`;
   return headers;
 }
 
-/**
- * Server keys injected into the function. The legacy service role key can be
- * empty once a project moves to the new API keys, so SUPABASE_SECRET_KEYS
- * (a JSON map of name -> sb_secret_ key) is read too. The first is used for REST.
- */
+/** Returns configuration used for Supabase REST calls in this function's environment. */
 function serverKeys(): string[] {
   const keys: string[] = [];
   const legacy = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '').trim();
@@ -49,7 +40,7 @@ function serverKeys(): string[] {
       if (typeof value === 'string' && value.trim()) keys.push(value.trim());
     }
   } catch {
-    // Malformed SUPABASE_SECRET_KEYS: fall back to whatever legacy key exists.
+    // If the env JSON is malformed, keep whatever legacy env value was already loaded.
   }
   return keys;
 }
@@ -117,7 +108,7 @@ async function writeCache(supabaseUrl: string, serviceKey: string, row: DoiCache
   if (!res.ok) throw new Error(`doi cache write HTTP ${res.status} ${await res.text()}`);
 }
 
-/** Accepts a server key (service role or secret), or a token whose SHA-256 is in function_tokens. */
+/** Returns whether the caller may invoke resolve-doi. */
 async function isAuthorized(token: string, keys: string[], supabaseUrl: string): Promise<boolean> {
   const serviceKey = keys[0] ?? '';
   return bearerAuthorized(token, keys, async () => {

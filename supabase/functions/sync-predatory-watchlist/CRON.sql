@@ -4,18 +4,9 @@
 --   1. migration 014_predatory_watchlist.sql has been applied
 --   2. `supabase functions deploy sync-predatory-watchlist` has succeeded
 --
--- Do not commit a bearer. Store it in Vault, then schedule the job.
--- The function accepts the same bearer as resolve-doi: a function token whose
--- SHA-256 is in public.function_tokens, or a server key (legacy service role
--- or a secret key from SUPABASE_SECRET_KEYS). A publishable or anon key will
--- not work.
+-- Configure the Vault entries referenced below before scheduling the job.
 -- Dashboard alternative: Edge Functions → sync-predatory-watchlist → Schedules,
--- cron `0 6 * * *`, POST, Authorization bearer = that token or server key.
---
--- Vault secrets expected by the statement below:
---   project_url       https://eimdgqymjwfljtapnuyl.supabase.co   (no trailing slash)
---   function_token    preferred: the predatory-journal-watch function token
---   service_role_key  fallback: a server key, if function_token is unset
+-- cron `0 6 * * *`, POST to the function URL.
 
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;

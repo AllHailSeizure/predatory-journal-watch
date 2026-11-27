@@ -50,7 +50,7 @@ There are **no mod menu actions, slash commands, or scheduled jobs** in this app
 
 1. A moderator with permission to manage apps installs **Predatory Journal Watch** (`predatory-journal-watch`) on the community through Reddit’s Devvit app flow (Developer Portal / community app settings). Published builds are submitted to the Devvit App Store; ask the app operator for the install link if the listing is unlisted.
 2. The app needs **moderator** scope so it can post distinguished, locked (and on posts, stickied) replies as the app account.
-3. **App-wide (global) settings**—Supabase project URL and API keys—must be filled in by whoever operates the hosted backend. Subreddit moderators normally only see **per-subreddit** settings below.
+3. **App-wide (global) settings** for the hosted backend must be configured by the app operator before link resolution can work. Subreddit moderators normally only see **per-subreddit** settings below.
 4. Open the app’s **settings** for your community and adjust behavior before relying on it in production (especially the warning text and allowlist).
 
 ---
@@ -84,7 +84,7 @@ frontiersin.org
 Example Society
 ```
 
-Tokens with a dot are treated as domains; other tokens are publisher names.
+Items with a dot are treated as domains; other entries are publisher names.
 
 ---
 

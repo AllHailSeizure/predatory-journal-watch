@@ -111,7 +111,7 @@ describe('resolve-doi', () => {
     expect(seen[1]?.ua).toContain('mailto:ops@example.com');
   });
 
-  it('omits the Crossref mailto query when the secret is blank', async () => {
+  it('omits the Crossref mailto query when the mailto setting is blank', async () => {
     const urls: string[] = [];
     const result = await resolveHits({ dois: [DOI], allowlist: '' }, watchlist, {
       ...memoryCache(),

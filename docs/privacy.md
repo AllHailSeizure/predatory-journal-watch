@@ -23,7 +23,7 @@ permalink: /privacy/
 
 ## 3. Third parties
 
-- **Supabase** (supabase.com) hosts the app's backend: the `resolve-doi` and `sync-predatory-watchlist` edge functions, and the database tables `predatory_watchlist`, `doi_resolution`, `function_tokens`, and `bot_logs`.
+- **Supabase** (supabase.com) hosts the app's backend: the `resolve-doi` and `sync-predatory-watchlist` edge functions, and the database tables `predatory_watchlist`, `doi_resolution`, and `bot_logs`.
 - **DOI resolvers.** To find where a DOI lands, the `resolve-doi` function asks **doi.org** (DOI Foundation) which registration agency handles it. It then queries **Crossref** (api.crossref.org) or **DataCite** (api.datacite.org). Only the DOI string is sent, never Reddit content or usernames. The operator's contact email may be included as Crossref's polite-pool `mailto`. The landing hosts and publisher name for each DOI are cached in `doi_resolution` and reused for 14 days.
 - **Watchlist sources.** Once a day, `sync-predatory-watchlist` downloads the public **Retraction Watch Hijacked Journal Checker** (a Google Sheets CSV export) and **Beall's List** (beallslist.net). No Reddit data is sent to these sources.
 - **Reddit** runs the app and stores its Redis data and comments.
@@ -42,7 +42,7 @@ Data is never sold or used for advertising. It is never sent to AI or LLM servic
 | `bot:log:{info, warn, error}` | Operational logs. These can include post, comment, and user IDs, domains, and DOIs | The last 500 entries per level |
 
 **Supabase:**
-- If the operator configures `supabaseServiceKey`, the same operational log lines are also written to `bot_logs`. They stay there until the operator deletes them.
+- When the operator enables remote operational logging, the same log lines written in Redis may also be stored in `bot_logs` until the operator deletes them.
 - DOI cache rows (DOI, landing hosts, and publisher name) are reused for 14 days and are not automatically deleted.
 - Watchlist rows are refreshed daily.
 
