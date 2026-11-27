@@ -10,7 +10,7 @@ Predatory Journal Watch is a [Reddit Devvit](https://developers.reddit.com/docs)
 
 **Legal:** [Terms of Service](https://allhailseizure.github.io/predatory-journal-watch/terms/) · [Privacy Policy](https://allhailseizure.github.io/predatory-journal-watch/privacy/)
 
-Developers and maintainers: see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, testing, releases, and backend deployment.
+Want to suggest a code change? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
